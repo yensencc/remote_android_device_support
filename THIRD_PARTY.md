@@ -9,6 +9,14 @@ Each directory keeps its original `LICENSE` / `NOTICE`. All are Apache License 2
 | `vendor/headwind-remote-server` | Headwind Remote server (formerly aPuppet): web console, Janus image build, config templates | Originally `github.com/h-mdm/remote-control` (no longer public); preserved in Apache-2.0 forks, e.g. https://github.com/ZhiYiDai/remote-control | `212335a` (2022-01-02, "Product renaming", by Headwind's developer) | The last upstream commit. Later third-party changes (2024 forks) are deliberately **not** included |
 | `vendor/headwind-remote-agent` | Headwind Remote Android agent v2.02 (`com.hmdm.control`) | Originally `github.com/h-mdm/remote-control-android` (no longer public); preserved in Apache-2.0 forks, e.g. https://github.com/huajiworld/remote-control-android | `73730d1` (2023-08-01, "Some string adjustments", by Headwind's developer) | The last upstream commit. The fork's later CI-only commits are excluded. `gradle/wrapper/gradle-wrapper.jar` matches Gradle's official 4.6 wrapper checksum |
 
+## Modified copy
+
+`agent/` is a copy of `vendor/headwind-remote-agent` with an MDM integration and fixes.
+The changes are listed in [agent/README-LTS.md](agent/README-LTS.md), and every
+modified file carries a notice, as Apache-2.0 section 4 requires. It depends on
+`io.github.webrtc-sdk:android` 125.6422.07 (BSD-3-Clause, Maven Central), because
+the original `org.webrtc:google-webrtc` artifact is no longer published.
+
 ## Container images
 
 | Image | Version | Publisher |

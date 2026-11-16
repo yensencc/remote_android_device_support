@@ -97,9 +97,8 @@ the URLs.
 
 ## Enrolling devices
 
-1. **MDM → Applications:** upload the POS app APK (`app-release.apk`) and the remote
-   agent APK (built from [`vendor/headwind-remote-agent`](vendor/headwind-remote-agent),
-   see below).
+1. **MDM → Applications:** upload the POS app APK (`app-release.apk`) and the
+   **Remote Support** agent APK (`./scripts/build-agent.sh`, see below).
 2. **MDM → Configurations:** create one configuration per role, for example *Register*,
    *Payment phone*, *Display* and *Display manager*. Add both apps to each.
    - **Kiosk mode** with the POS app as the main app locks a device to it.
@@ -111,19 +110,19 @@ the URLs.
      device ID. You get less control: installs and remote control ask for confirmation.
    - **Fire TV:** can't be device owner; use the second method.
 
-**Building the remote agent:**
-1. Open `vendor/headwind-remote-agent` in Android Studio.
-2. Set `DEFAULT_SERVER_URL` to `"https://remote.<domain>"` in `app/build.gradle`. Leave
-   `DEFAULT_SECRET` empty, and enter the secret on the device or through the MDM so it
-   never ends up in Git.
-3. Build a signed release APK.
+**The remote agent** is our MDM-integrated build of the open-source agent, in
+[`agent/`](agent) (package `com.lasttechsol.remotesupport`, shown as **Remote
+Support**). It takes its server URL, secret and name from the MDM's Application
+settings, the MDM can start it, and it reports its session code to the MDM panel.
+Build it with `./scripts/build-agent.sh` (signed with a key kept outside the repo).
+Setup steps are in [agent/README-LTS.md](agent/README-LTS.md#setting-it-up-in-headwind-mdm).
+In short, these are the Application settings for `com.lasttechsol.remotesupport`:
 
-The agent appears on devices as **Headwind Remote**. Settings:
-
-| Setting | Value |
+| Attribute | Value |
 | --- | --- |
-| Server URL | `https://remote.<domain>` |
-| Secret | `JANUS_API_SECRET` from `.env` |
+| `server_url` | `https://remote.<domain>` |
+| `secret` | `JANUS_API_SECRET` from `.env` |
+| `device_name` | optional; default is the MDM device number |
 
 ## Configuring the POS app from the MDM
 
@@ -147,17 +146,24 @@ Stripe keys are **never** set through the MDM. Full details are in the POS repo:
 
 ## Remote control sessions
 
-**Open-source agent:**
-1. On the device, open **Headwind Remote** and tap **Share screen**.
-2. The first time, allow its Accessibility service and "display over other apps".
-3. Accept Android's screen-sharing prompt.
-4. In the remote console, enter the **session ID and password** the device shows.
+**From the MDM panel (Remote Support agent):**
+1. **Push messages:** choose the device, type `runApp`, payload
+   `{"pkg":"com.lasttechsol.remotesupport","extra":{"connect":true}}`.
+2. **Read the code:** the agent opens, connects, and reports `Session … PIN … <link>`.
+   It shows up in the device's log right away (with a Device Log rule) and in the
+   device's custom field 1 within about 15 minutes.
+3. **Connect:** open the link and press **Connect** in the console.
+4. **On the device:** someone taps **Start now** on Android's casting prompt.
 
-You then see the screen and control it with mouse and keyboard. A flashing green dot on
-the device shows the session is live.
+**From the device:** open **Remote Support** and read out the session ID and PIN it
+shows.
 
-**Premium** (from Headwind) starts sessions from the MDM device list, with no one on
-site. See [Limits](#limits-to-know).
+**First time on each device:** agree to the terms and enable the app's Accessibility
+service (needed for remote taps). You then see the screen and control it with mouse and
+keyboard.
+
+**Premium** (from Headwind) adds a Remote Control button in the MDM device list. See
+[Limits](#limits-to-know).
 
 ## Operations
 
@@ -201,7 +207,9 @@ infrastructure.**
 ## Limits to know
 
 - **Unattended sessions:** on Android 14+ every screen-sharing session shows a
-  **consent prompt** on the device. The open-source agent always needs someone on site.
+  **consent prompt** on the device. The open-source agent (ours included) always needs
+  someone on site to tap it; the MDM can start the agent and show its code, but not
+  accept that prompt.
   Headwind's Premium agent starts sessions from the MDM; how far it avoids the prompt
   depends on device-owner enrollment and the device/Android version, so confirm with
   Headwind per model before buying.
@@ -220,10 +228,11 @@ docker-compose.yml            postgresql + hmdm + janus (pinned images, memory l
 nginx/                        host nginx sites (mdm, remote) + TLS snippet
 remote/janus/*.tmpl           Janus config, from Headwind Remote's templates (loopback-only)
 remote/web-admin/             console settings template (Janus URLs + API secret)
-scripts/                      build-web-admin, backup, update, status, uninstall
+scripts/                      build-web-admin, build-agent, backup, update, status, uninstall
+agent/                        Remote Support agent: the vendored agent + MDM integration (README-LTS.md)
 vendor/hmdm-docker/           Headwind MDM Docker source (image build reference)
 vendor/headwind-remote-server/  Headwind Remote server: web console + Janus image build
-vendor/headwind-remote-agent/   Headwind Remote Android agent (aPuppet) source
+vendor/headwind-remote-agent/   Headwind Remote Android agent (aPuppet) source, unchanged
 THIRD_PARTY.md                where each vendored component comes from, and its license
 ```
 
