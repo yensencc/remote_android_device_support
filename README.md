@@ -241,3 +241,4 @@ THIRD_PARTY.md                where each vendored component comes from, and its 
 | Console loads, but a session never shows video | UDP range blocked: check `ufw status` and the provider firewall; check `PUBLIC_IP` in `.env` |
 | Agent: "Unauthorized request" | Wrong secret: it must equal `JANUS_API_SECRET` |
 | Devices don't get pushes | Port 31000/tcp blocked |
+| MDM log: `Failed to initialize component [Connector["https-openssl-nio-8443"]]` | Harmless: Tomcat's own HTTPS port isn't used (nginx terminates TLS) and can't load the ECDSA Let's Encrypt key. The panel and devices use port 8080 behind nginx |
