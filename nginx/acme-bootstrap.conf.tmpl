@@ -1,0 +1,9 @@
+# Temporary HTTP-only site so certbot can prove ownership of both domains
+# (install.sh replaces it with mdm.conf + remote.conf once certificates exist).
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${MDM_DOMAIN} ${REMOTE_DOMAIN};
+    location ^~ /.well-known/acme-challenge/ { root /var/www/certbot; }
+    location / { return 404; }
+}

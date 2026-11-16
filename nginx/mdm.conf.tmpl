@@ -1,0 +1,31 @@
+# Headwind MDM web panel and device API -> hmdm container on 127.0.0.1:8080.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${MDM_DOMAIN};
+    location ^~ /.well-known/acme-challenge/ { root /var/www/certbot; }
+    location / { return 301 https://$host$request_uri; }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name ${MDM_DOMAIN};
+
+    ssl_certificate     /etc/letsencrypt/live/${MDM_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${MDM_DOMAIN}/privkey.pem;
+    include /etc/nginx/snippets/remote-support-tls.conf;
+
+    # APK uploads in the panel.
+    client_max_body_size 512m;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+}

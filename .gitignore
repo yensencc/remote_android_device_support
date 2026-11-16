@@ -1,0 +1,11 @@
+# Secrets and runtime state: never commit
+.env
+data/
+generated/
+*.htpasswd
+backups/
+# Android agent build output
+vendor/headwind-remote-agent/**/build/
+vendor/headwind-remote-agent/.gradle/
+vendor/headwind-remote-agent/local.properties
+.DS_Store

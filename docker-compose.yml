@@ -1,0 +1,65 @@
+# Headwind MDM (device management) + Headwind Remote / aPuppet (remote control) on one host.
+# TLS is terminated by the host's nginx (see nginx/); containers listen on 127.0.0.1 only,
+# except the MDM push port 31000 (devices) and Janus' RTP/UDP range (video).
+# Values come from .env (copy .env.example; install.sh generates the secrets).
+
+services:
+  postgresql:
+    image: ${POSTGRES_IMAGE:-postgres:15-alpine}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hmdm
+      POSTGRES_PASSWORD: ${SQL_PASS:?run install.sh to generate secrets}
+      POSTGRES_DB: hmdm
+    # Small-server tuning (1-2 GB RAM, a few hundred devices at most).
+    command: postgres -c shared_buffers=32MB -c max_connections=40 -c work_mem=2MB -c maintenance_work_mem=32MB
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+    # No published ports: only the hmdm container reaches it on the compose network.
+    mem_limit: 256m
+
+  hmdm:
+    image: ${HMDM_IMAGE:-headwindmdm/hmdm:0.1.9}
+    restart: unless-stopped
+    depends_on:
+      - postgresql
+    ports:
+      - "127.0.0.1:8080:8080" # web panel + device API, proxied by nginx (https://MDM_DOMAIN)
+      - "31000:31000"         # MQTT push to devices (authenticated)
+    environment:
+      SQL_HOST: postgresql
+      SQL_PORT: 5432
+      SQL_BASE: hmdm
+      SQL_USER: hmdm
+      SQL_PASS: ${SQL_PASS}
+      BASE_DOMAIN: ${MDM_DOMAIN:?set MDM_DOMAIN in .env}
+      # Devices and the panel use https://MDM_DOMAIN. The image also builds a Tomcat
+      # keystore from the host's Let's Encrypt files (mounted read-only); its 8443 port
+      # isn't published because nginx terminates TLS.
+      PROTOCOL: https
+      HTTPS_LETSENCRYPT: "true"
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      SHARED_SECRET: ${SHARED_SECRET}
+      HMDM_VARIANT: os
+      HMDM_URL: ${HMDM_URL:-https://h-mdm.com/files/hmdm-5.41.1-os.war}
+      CLIENT_VERSION: ${CLIENT_VERSION:-6.40}
+      FORCE_RECONFIGURE: ${FORCE_RECONFIGURE:-}
+      CATALINA_OPTS: -Xms128m -Xmx${TOMCAT_MAX_HEAP:-384m} -Xss512k -XX:+UseSerialGC -XX:MaxMetaspaceSize=160m
+    volumes:
+      - ./data/hmdm-work:/usr/local/tomcat/work
+      - ./data/hmdm-config:/usr/local/tomcat/conf/Catalina/localhost
+      - ./data/hmdm-webapps:/usr/local/tomcat/webapps
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    mem_limit: ${HMDM_MEM_LIMIT:-640m}
+
+  janus:
+    # 0.10.7 matches the vendored server and agent (the agent uses the pre-1.0 streaming
+    # API). Built from vendor/headwind-remote-server/deploy/images/janus-gateway.
+    image: ${JANUS_IMAGE:-headwindmdm/janus-gateway:0.10.7}
+    restart: unless-stopped
+    # Host networking: WebRTC/RTP needs the real UDP ports. Its HTTP/WebSocket APIs
+    # bind to 127.0.0.1 (see remote/janus); only the RTP range is public.
+    network_mode: host
+    volumes:
+      - ./generated/janus:/usr/local/etc/janus:ro
+    mem_limit: 256m
