@@ -16,14 +16,16 @@ small Linux server:
 2. [Requirements](#requirements)
 3. [Install](#install)
 4. [After installing](#after-installing)
-5. [Enrolling devices](#enrolling-devices)
-6. [Configuring the POS app from the MDM](#configuring-the-pos-app-from-the-mdm)
-7. [Remote control sessions](#remote-control-sessions)
-8. [Operations](#operations)
-9. [Security](#security)
-10. [Limits to know](#limits-to-know)
-11. [Repository layout](#repository-layout)
-12. [Troubleshooting](#troubleshooting)
+5. [Access and credentials](#access-and-credentials)
+6. [Client devices: prerequisites and steps](#client-devices-prerequisites-and-steps)
+7. [Enrolling devices](#enrolling-devices)
+8. [Configuring the POS app from the MDM](#configuring-the-pos-app-from-the-mdm)
+9. [Remote control sessions](#remote-control-sessions)
+10. [Operations](#operations)
+11. [Security](#security)
+12. [Limits to know](#limits-to-know)
+13. [Repository layout](#repository-layout)
+14. [Troubleshooting](#troubleshooting)
 
 ## How it fits together
 
@@ -94,6 +96,56 @@ the URLs.
    `scripts/backup.sh` includes it.
 4. **Schedule backups:**
    `echo '15 3 * * * root /opt/remote-support/scripts/backup.sh' > /etc/cron.d/remote-support-backup`
+
+## Access and credentials
+
+**No secret values belong in this repo.** Keep the operator's copy in a password
+manager or in `~/.config/remote-support/CREDENTIALS.md` (mode 600, outside Git). This
+table says what exists and where it lives:
+
+| Access | Login | Where the secret lives |
+| --- | --- | --- |
+| Server SSH | `root`, key only | Your SSH private key (password login disabled) |
+| Server rescue console (provider web console) | `root` | Root password, set on first login; only works on the provider's console |
+| MDM panel `https://mdm.<domain>` | `admin` (plus users you add) | Set in the panel; the first login is `admin/admin`, change it at once |
+| Remote console `https://remote.<domain>` | `REMOTE_ADMIN_USER` (`support`) | `REMOTE_ADMIN_PASS` in `.env` |
+| Agent *Server URL* / *Secret* | — | `https://remote.<domain>` / `JANUS_API_SECRET` in `.env` (enter it in the MDM's Application settings) |
+| Database | `hmdm` | `SQL_PASS` in `.env` (loopback only) |
+| MDM signing / push | — | `SHARED_SECRET` in `.env`; it must match the secret built into the MDM agent APK |
+| Janus admin API | — | `JANUS_ADMIN_SECRET` in `.env` (API disabled) |
+| Agent release signing key | — | Off-repo keystore (see [agent/README-LTS.md](agent/README-LTS.md#signing)) |
+| Let's Encrypt | `ADMIN_EMAIL` | Expiry notices only |
+
+## Client devices: prerequisites and steps
+
+**What each device needs:**
+
+| Requirement | Detail |
+| --- | --- |
+| Android version | **7.0+**. On Android 14+, every remote session needs one on-screen tap ("Start now") |
+| Network (outbound only) | HTTPS **443** to `mdm.<domain>` and `remote.<domain>`; TCP **31000** (MDM push); UDP **20000–20039** (screen video). No inbound ports or router changes |
+| **Headwind MDM agent** | `https://mdm.<domain>/files/hmdm-<version>-os.apk`, or installed by QR enrollment |
+| **Remote Support agent** | Pushed by the MDM (`com.lasttechsol.remotesupport`); [agent/README-LTS.md](agent/README-LTS.md) |
+| **POS app** | Pushed by the MDM (optional) |
+| Permissions, once per device | Remote Support: **Accessibility** on (for remote taps; on Android 13+ you may first need App info → ⋮ → *Allow restricted settings*). Without device-owner enrollment, also allow **Install unknown apps** for Headwind MDM, and turn off battery optimization for it so push stays connected |
+| Fire TV / Android TV | Can't be device owner: installs need a tap, and kiosk mode is limited |
+
+**What the support person needs:** a desktop **Chrome, Edge or Firefox**, the MDM
+login and the remote-console login. Nothing to install.
+
+**Bringing a new device under support:**
+1. **Pick a configuration.** In the MDM, choose the device's configuration (register,
+   display and so on) and make sure it contains the Remote Support agent with its
+   `server_url` / `secret` Application settings.
+2. **Enroll.** Either factory-reset the device, tap the welcome screen 6×, and scan the
+   configuration's QR code (**recommended**: silent installs, full control). Or install
+   the MDM agent APK and enter the server and a device ID.
+3. **Install.** Wait for the apps to install (tap **Install** if asked).
+4. **Set up the agent once.** Open **Remote Support**, agree to the terms, and enable
+   its Accessibility service.
+5. **Test.** Send a `runApp` push (see
+   [Remote control sessions](#remote-control-sessions)), connect from the console,
+   and tap **Start now** on the device.
 
 ## Enrolling devices
 
