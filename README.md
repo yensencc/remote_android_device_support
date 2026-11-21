@@ -149,6 +149,9 @@ login and the remote-console login. Nothing to install.
 
 ## Enrolling devices
 
+**Step-by-step runbook:** [docs/ONBOARDING.md](docs/ONBOARDING.md) covers server preparation, one configuration per role, QR enrollment as device owner, the one-time on-device steps, and verification with `scripts/device-status.sh`.
+
+
 1. **MDM → Applications:** upload the POS app APK (`app-release.apk`) and the
    **Remote Support** agent APK (built from its own repo, see below).
 2. **MDM → Configurations:** create one configuration per role, for example *Register*,
@@ -222,6 +225,7 @@ keyboard.
 | Task | Command (in `/opt/remote-support`) |
 | --- | --- |
 | Status: containers, memory, ports, certificate expiry | `./scripts/status.sh` |
+| Device onboarding / health checklist | `./scripts/device-status.sh [device-id]` |
 | Logs | `docker compose logs -f hmdm` (or `janus`, `postgresql`) |
 | Backup now | `./scripts/backup.sh` (to `/var/backups/remote-support`, kept 14 days) |
 | Apply `.env` changes / reload certificates | `./scripts/update.sh` |
