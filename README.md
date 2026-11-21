@@ -113,7 +113,7 @@ table says what exists and where it lives:
 | Database | `hmdm` | `SQL_PASS` in `.env` (loopback only) |
 | MDM signing / push | — | `SHARED_SECRET` in `.env`: the stock agent's public value `changeme-C3z9vi54` (it must match the agent APK) |
 | Janus admin API | — | `JANUS_ADMIN_SECRET` in `.env` (API disabled) |
-| Agent release signing key | — | Off-repo keystore (see [agent/README-LTS.md](agent/README-LTS.md#signing)) |
+| Agent release signing key | — | Off-repo keystore (see the [agent repo](https://github.com/yensencc/lts-remote-support-android#signing-release-builds)) |
 | Let's Encrypt | `ADMIN_EMAIL` | Expiry notices only |
 
 ## Client devices: prerequisites and steps
@@ -125,7 +125,7 @@ table says what exists and where it lives:
 | Android version | **7.0+**. On Android 14+, every remote session needs one on-screen tap ("Start now") |
 | Network (outbound only) | HTTPS **443** to `mdm.<domain>` and `remote.<domain>`; TCP **31000** (MDM push); UDP **20000–20039** (screen video). No inbound ports or router changes |
 | **Headwind MDM agent** | `https://mdm.<domain>/files/hmdm-<version>-os.apk`, or installed by QR enrollment |
-| **Remote Support agent** | Pushed by the MDM (`com.lasttechsol.remotesupport`); [agent/README-LTS.md](agent/README-LTS.md) |
+| **Remote Support agent** | Pushed by the MDM (`com.lasttechsol.remotesupport`); source in [lts-remote-support-android](https://github.com/yensencc/lts-remote-support-android) |
 | **POS app** | Pushed by the MDM (optional) |
 | Permissions, once per device | Remote Support: **Accessibility** on (for remote taps; on Android 13+ you may first need App info → ⋮ → *Allow restricted settings*). Without device-owner enrollment, also allow **Install unknown apps** for Headwind MDM, and turn off battery optimization for it so push stays connected |
 | Fire TV / Android TV | Can't be device owner: installs need a tap, and kiosk mode is limited |
@@ -150,7 +150,7 @@ login and the remote-console login. Nothing to install.
 ## Enrolling devices
 
 1. **MDM → Applications:** upload the POS app APK (`app-release.apk`) and the
-   **Remote Support** agent APK (`./scripts/build-agent.sh`, see below).
+   **Remote Support** agent APK (built from its own repo, see below).
 2. **MDM → Configurations:** create one configuration per role, for example *Register*,
    *Payment phone*, *Display* and *Display manager*. Add both apps to each.
    - **Kiosk mode** with the POS app as the main app locks a device to it.
@@ -163,11 +163,11 @@ login and the remote-console login. Nothing to install.
    - **Fire TV:** can't be device owner; use the second method.
 
 **The remote agent** is our MDM-integrated build of the open-source agent, in
-[`agent/`](agent) (package `com.lasttechsol.remotesupport`, shown as **Remote
+[lts-remote-support-android](https://github.com/yensencc/lts-remote-support-android) (package `com.lasttechsol.remotesupport`, shown as **Remote
 Support**). It takes its server URL, secret and name from the MDM's Application
 settings, the MDM can start it, and it reports its session code to the MDM panel.
-Build it with `./scripts/build-agent.sh` (signed with a key kept outside the repo).
-Setup steps are in [agent/README-LTS.md](agent/README-LTS.md#setting-it-up-in-headwind-mdm).
+Build it there with `scripts/build.sh` (signed with a key kept outside Git).
+MDM setup is in [its README](https://github.com/yensencc/lts-remote-support-android#5-headwind-mdm-integration).
 In short, these are the Application settings for `com.lasttechsol.remotesupport`:
 
 | Attribute | Value |
@@ -280,8 +280,7 @@ docker-compose.yml            postgresql + hmdm + janus (pinned images, memory l
 nginx/                        host nginx sites (mdm, remote) + TLS snippet
 remote/janus/*.tmpl           Janus config, from Headwind Remote's templates (loopback-only)
 remote/web-admin/             console settings template (Janus URLs + API secret)
-scripts/                      build-web-admin, build-agent, backup, update, status, uninstall
-agent/                        Remote Support agent: the vendored agent + MDM integration (README-LTS.md)
+scripts/                      build-web-admin, backup, update, status, uninstall
 vendor/hmdm-docker/           Headwind MDM Docker source (image build reference)
 vendor/headwind-remote-server/  Headwind Remote server: web console + Janus image build
 vendor/headwind-remote-agent/   Headwind Remote Android agent (aPuppet) source, unchanged

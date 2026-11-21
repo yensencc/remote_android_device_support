@@ -11,8 +11,9 @@ Each directory keeps its original `LICENSE` / `NOTICE`. All are Apache License 2
 
 ## Modified copy
 
-`agent/` is a copy of `vendor/headwind-remote-agent` with an MDM integration and fixes.
-The changes are listed in [agent/README-LTS.md](agent/README-LTS.md), and every
+The Remote Support agent, a copy of `vendor/headwind-remote-agent` with an MDM integration
+and fixes, now lives in its own repo: [lts-remote-support-android](https://github.com/yensencc/lts-remote-support-android). Its changes are
+listed in `docs/CHANGES_FROM_UPSTREAM.md` there, and every
 modified file carries a notice, as Apache-2.0 section 4 requires. It depends on
 `io.github.webrtc-sdk:android` 125.6422.07 (BSD-3-Clause, Maven Central), because
 the original `org.webrtc:google-webrtc` artifact is no longer published.

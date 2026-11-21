@@ -9,9 +9,6 @@ vendor/headwind-remote-agent/**/build/
 vendor/headwind-remote-agent/.gradle/
 vendor/headwind-remote-agent/local.properties
 .DS_Store
-agent/**/build/
-agent/.gradle/
-agent/local.properties
 # Built APKs (upload them to the MDM; don't commit binaries)
 dist/
 # Signing keys never belong in the repo
