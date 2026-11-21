@@ -111,7 +111,7 @@ table says what exists and where it lives:
 | Remote console `https://remote.<domain>` | `REMOTE_ADMIN_USER` (`support`) | `REMOTE_ADMIN_PASS` in `.env` |
 | Agent *Server URL* / *Secret* | — | `https://remote.<domain>` / `JANUS_API_SECRET` in `.env` (enter it in the MDM's Application settings) |
 | Database | `hmdm` | `SQL_PASS` in `.env` (loopback only) |
-| MDM signing / push | — | `SHARED_SECRET` in `.env`; it must match the secret built into the MDM agent APK |
+| MDM signing / push | — | `SHARED_SECRET` in `.env`: the stock agent's public value `changeme-C3z9vi54` (it must match the agent APK) |
 | Janus admin API | — | `JANUS_ADMIN_SECRET` in `.env` (API disabled) |
 | Agent release signing key | — | Off-repo keystore (see [agent/README-LTS.md](agent/README-LTS.md#signing)) |
 | Let's Encrypt | `ADMIN_EMAIL` | Expiry notices only |
@@ -295,6 +295,7 @@ THIRD_PARTY.md                where each vendored component comes from, and its 
 
 | Symptom | Fix |
 | --- | --- |
+| Saved changes and `runApp` pushes reach devices only on their periodic sync; the hmdm log shows `User name [hmdm] or password is invalid` | `SHARED_SECRET` doesn't match the MDM agent APK. Set `SHARED_SECRET=changeme-C3z9vi54` (the stock agent's value) in `.env`, put the same value in `hash.secret` in `data/hmdm-config/ROOT.xml`, then `docker compose up -d hmdm` |
 | `install.sh`: "resolves to …, expected …" | DNS isn't pointing here yet; wait for propagation (`dig +short mdm.<domain>`) |
 | certbot fails | Port 80 blocked by the provider firewall, or DNS not propagated |
 | MDM shows 502 for a few minutes after start | Java is still starting (slow on 1 vCPU); `docker compose logs -f hmdm` |

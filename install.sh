@@ -30,7 +30,11 @@ set_env() { # set_env KEY VALUE: write back to .env
   export "$1=$2"
 }
 [[ -n "${SQL_PASS:-}" ]]           || set_env SQL_PASS "$(gen 32)"
-[[ -n "${SHARED_SECRET:-}" ]]      || set_env SHARED_SECRET "$(gen 32)"
+# The stock Headwind MDM agent APK has this secret compiled in (BuildConfig.REQUEST_SIGNATURE)
+# and uses it for its MQTT push login and request signatures. A different value breaks
+# push. It's public, so it isn't a real secret; change it only together with a custom
+# agent build.
+[[ -n "${SHARED_SECRET:-}" ]]      || set_env SHARED_SECRET "changeme-C3z9vi54"
 [[ -n "${JANUS_API_SECRET:-}" ]]   || set_env JANUS_API_SECRET "$(gen 24)"
 [[ -n "${JANUS_ADMIN_SECRET:-}" ]] || set_env JANUS_ADMIN_SECRET "$(gen 32)"
 [[ -n "${REMOTE_ADMIN_USER:-}" ]]  || set_env REMOTE_ADMIN_USER support
