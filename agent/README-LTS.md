@@ -23,6 +23,7 @@ and the official app never "updates" over this build.
 - **Device names can't break the session.** A device name ending in a typed Enter made the agent "connect" forever, because the textroom join was built by string concatenation. The join now uses `JSONObject`, and names are stripped of control characters.
 - **"Never" idle timeout sticks.** Upstream reset it to 120 s on the next start.
 - **The share-link message** had its two arguments swapped, and its URL pointed at `/` instead of `/web-admin/`.
+- **Data channel start (2.02-lts2).** The first data-channel message is now sent once the channel is open. The newer WebRTC library drops messages sent earlier, so the agent stayed on "connecting" forever with the server never seeing a room request.
 - **The build works again.** `org.webrtc:google-webrtc:1.0.32006` and jcenter no longer exist. It now uses `io.github.webrtc-sdk:android:125.6422.07` from Maven Central, the same `org.webrtc` API (the agent only uses its DataChannel), and is ARM-only.
 
 ## What it does NOT do

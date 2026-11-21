@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-// Modified for remote_android_device_support (see agent/README-LTS.md): textroom join message built with JSONObject (escaping).
+// Modified for remote_android_device_support (see agent/README-LTS.md): textroom join message built with JSONObject (escaping); first message sent when the data channel is open.
 
 package com.hmdm.control.janus;
 
@@ -412,9 +412,38 @@ public class JanusTextRoomPlugin extends JanusPlugin {
                 if (hangupProtectionRunnable != null) {
                     handler.removeCallbacks(hangupProtectionRunnable);
                 }
-                // We need to send something into the data channel, otherwise it won't be initialized
-                String message = "{\"textroom\":\"list\",\"transaction\":\"" + Utils.generateTransactionId() + "\"}";
-                sendToDataChannel(message);
+                // We need to send something into the data channel, otherwise it won't be initialized:
+                // Janus answers on its own "JanusDataChannel", which reaches onDataChannel() and
+                // continues the session setup. Newer WebRTC builds drop messages sent before the
+                // channel is OPEN (the original library queued them), so send on OPEN.
+                final DataChannel channel = dataChannel;
+                if (channel == null) {
+                    return;
+                }
+                final java.util.concurrent.atomic.AtomicBoolean sent = new java.util.concurrent.atomic.AtomicBoolean(false);
+                final Runnable sendList = () -> {
+                    if (channel.state() == DataChannel.State.OPEN && sent.compareAndSet(false, true)) {
+                        String message = "{\"textroom\":\"list\",\"transaction\":\"" + Utils.generateTransactionId() + "\"}";
+                        sendToDataChannel(message);
+                    }
+                };
+                channel.registerObserver(new DataChannel.Observer() {
+                    @Override
+                    public void onBufferedAmountChange(long l) {
+                    }
+
+                    @Override
+                    public void onStateChange() {
+                        Log.d(Const.LOG_TAG, "Textroom plugin: local channel state " + channel.state());
+                        sendList.run();
+                    }
+
+                    @Override
+                    public void onMessage(DataChannel.Buffer buffer) {
+                        // Janus replies on its own channel (see onDataChannel)
+                    }
+                });
+                sendList.run(); // already open
             }
         }.execute();
 
@@ -430,7 +459,9 @@ public class JanusTextRoomPlugin extends JanusPlugin {
         Log.d(Const.LOG_TAG, "Sending message: " + message);
         ByteBuffer data = Utils.stringToByteBuffer(message);
         DataChannel.Buffer buffer = new DataChannel.Buffer(data, false);
-        dataChannel.send(buffer);
+        if (!dataChannel.send(buffer)) {
+            Log.w(Const.LOG_TAG, "Data channel send failed (state " + dataChannel.state() + ")");
+        }
     }
 
     public int createRoom(String roomId, String password) {
