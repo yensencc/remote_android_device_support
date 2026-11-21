@@ -8,6 +8,7 @@ This runbook takes a device from out of the box (or factory reset) to:
 
 | Phase | Where | Once per… | Time |
 | --- | --- | --- | --- |
+| [Apps: prerequisites](#apps-prerequisites) | MDM panel | app version | 5 min per app |
 | [A. Server preparation](#a-server-preparation-once) | MDM panel | server | 15 min |
 | [B. Configuration per role](#b-a-configuration-per-device-role-once-per-role) | MDM panel | role (register, display…) | 10 min |
 | [C. Register the device](#c-register-the-device-in-the-mdm) | MDM panel | device | 1 min |
@@ -29,18 +30,54 @@ Which path fits which device:
 
 ---
 
+## Apps: prerequisites
+
+**Nothing has to be installed on the device beforehand.** For QR enrollment you only
+need a factory-reset device with internet. Every app comes from the MDM, so each one
+must be **uploaded to the MDM before you onboard a device**.
+
+| # | App (as shown on the device) | Package | Current version | What it does | How it reaches the device | Ready in the MDM? |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | **Headwind MDM** | `com.hmdm.launcher` | 6.40 | The MDM agent: device owner, installs and updates the other apps, kiosk mode | **QR:** Android downloads it during setup from `https://mdm.lasttechsol.com/files/hmdm-6.40-os.apk`. **Manual:** you install that APK (D2) | ✅ comes with the server install |
+| 2 | Headwind MDM update helper | `com.hmdm.emuilauncherrestarter` | 1.04 | Lets the agent update itself | Installed by the MDM | ✅ in "Common - Minimal" |
+| 3 | Headwind MDM Pager Plugin | `com.hmdm.pager` | 1.02 | Shows text messages sent from the panel (Messaging plugin) | Installed by the MDM | ✅ in "Common - Minimal" |
+| 4 | **Remote Support** | `com.lasttechsol.remotesupport` | 2.02-lts2 | Remote screen view and control | Installed by the MDM | ✅ uploaded. **Turn "Show icon" on** in each configuration (it's off today) |
+| 5 | **POS app** | `com.yensencc.react_native_pos` | (first private-key build) | The business app | Installed by the MDM | ❌ **not in the MDM yet.** Add it after the private-key switch |
+
+**Not wanted:** *Headwind Remote / aPuppet* (`com.hmdm.control`), the old remote agent.
+Both configurations are already set to **Remove** it.
+
+### Adding an app (or a new version) to the MDM
+
+1. **Build the release APK:**
+   - Remote Support: `scripts/build.sh` in lts-remote-support-android →
+     `dist/remote-support-agent-<version>.apk`.
+   - POS app: its signed release build.
+2. **First time: Applications → Add.**
+   - **Type:** Application.
+   - **File:** upload the APK. **Package ID**, **name** and **version** fill in by
+     themselves; check them.
+   - **Native code:** None (universal APK).
+   - **Show icon:** On.
+   - **Preinstalled**, **Run after installation** and **Run at boot:** Off.
+   - Save.
+3. **New version: Applications → the app → Versions → Add.**
+   - Upload the APK; it needs a higher `versionCode` than the current one.
+   - When asked, apply it to the configurations.
+4. **In each configuration that should have it:** Applications → set the app to
+   **Install** and **Show icon** on → Save. Enrolled devices get it within seconds:
+   silently when fully managed, with an **Install** prompt otherwise.
+
 ## A. Server preparation (once)
 
 1. **MDM login:** use https://mdm.lasttechsol.com with your own admin password (not
    `admin/admin`).
-2. **Application: Remote Support.**
-   - **Applications:** the app (`com.lasttechsol.remotesupport`) must exist with its latest
-     APK. It's built in
-     [lts-remote-support-android](https://github.com/yensencc/lts-remote-support-android).
-   - **Show icon:** On. **Run after install / at boot:** Off.
-3. **Application: POS app** (`com.yensencc.react_native_pos`).
-   - Add it the same way, signed with its **private release key** (once that switch is
-     done).
+2. **Applications:** apps 1–5 from [Apps: prerequisites](#apps-prerequisites) exist at
+   their current versions. Remote Support is built in
+   [lts-remote-support-android](https://github.com/yensencc/lts-remote-support-android).
+   The POS app must be signed with its **private release key**.
+3. **Old agent:** the old *Headwind Remote* (`com.hmdm.control`) is set to **Remove** in
+   every configuration.
 4. **Settings: custom property 1.**
    - Name it `Remote session`, so the session code shows in the device list.
    - Leave **Send to device** off.
@@ -107,8 +144,8 @@ set per device later: **Devices → device → Application settings**.
    it the **device owner**.
 7. **Headwind MDM opens and walks through its own permission screens** (overlay, usage
    access and so on). Allow each one.
-8. **Wait 1–3 minutes.** Remote Support and the POS app install by themselves, with no
-   prompts.
+8. **Wait 1–3 minutes.** The MDM installs apps 2–5 (update helper, Pager plugin, Remote
+   Support, POS app) by itself, with no prompts.
 
 ### D2. Manual install (devices that can't be reset / Fire TV)
 
@@ -166,6 +203,37 @@ Android doesn't let an MDM do these steps, so someone on site does them once.
    5. **Check control:** you see the screen and can tap. Disconnect.
 3. **Record the device:** device ID, shop, model, serial, role and enrollment date go in
    the shop's records.
+
+### Done: what a successfully onboarded device has
+
+**Apps** (Settings → Apps; app icons on the home screen, or in the kiosk launcher):
+
+| App | Package | Version | Icon | Status |
+| --- | --- | --- | --- | --- |
+| Headwind MDM | `com.hmdm.launcher` | 6.40 | — (runs the device; it's the home screen in kiosk mode) | Device owner |
+| Headwind MDM update helper | `com.hmdm.emuilauncherrestarter` | 1.04 | no | Background |
+| Headwind MDM Pager Plugin | `com.hmdm.pager` | 1.02 | yes | Shows panel messages |
+| **Remote Support** | `com.lasttechsol.remotesupport` | 2.02-lts2 (or newer) | yes | Accessibility **On**; shows "Connected" with a Session ID and PIN when opened |
+| **POS app** | `com.yensencc.react_native_pos` | current release | yes | Opens in its role (register, display…) |
+
+**Not present:** *Headwind Remote* / *aPuppet* (`com.hmdm.control`).
+
+**Other signs it worked:**
+- **Ownership notice:** the quick settings or lock screen says *"This device is managed
+  by your organization"* (fully managed only).
+- **Device admin:** Settings → Security → Device admin apps shows **Headwind MDM**
+  enabled.
+- **Accessibility:** Settings → Accessibility → **Remote Support** is On.
+- **MDM panel:**
+  - **Devices:** the device shows a recent *last update*, and its *Remote session*
+    column has `Session … PIN … <link>`.
+  - **Device Log:** has the "Remote support ready" line.
+- **Checklist:** `./scripts/device-status.sh "<device-id>"` shows every line `[x]`. It
+  checks each configured app at the expected version, so it catches a missing or
+  outdated app.
+
+If an app is missing: open **Headwind MDM** on the device (a non-owner device may be
+waiting for an **Install** tap), then rerun the checklist.
 
 ## Afterwards
 
